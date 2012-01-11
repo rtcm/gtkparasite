@@ -391,7 +391,7 @@ append_widget(GtkTreeStore *model,
     }
 
     window = gtk_widget_get_window (widget);
-    if (window_info)
+    if (window)
     {
 #if HAVE_X11
 	window_info = g_strdup_printf("%p (XID 0x%x)", window,
