@@ -35,6 +35,7 @@ struct _ParasiteStyleListPrivate
 {
   GHashTable *css_files;
   GtkListStore *model;
+  GtkWidget *widget;
 };
 
 const char *known_properties[] = {
@@ -104,6 +105,7 @@ parasite_style_list_finalize (GObject *self)
 
   g_hash_table_destroy (priv->css_files);
   g_object_unref (priv->model);
+  /* priv->widget, if any, is unrefed on the weak ref callback */
 
   G_OBJECT_CLASS (parasite_style_list_parent_class)->finalize (self);
 }
@@ -162,6 +164,8 @@ parasite_style_list_init (ParasiteStyleList *self)
                                                "Location", renderer,
                                                "text", COLUMN_LOCATION,
                                                NULL);
+
+  priv->widget = NULL;
 }
 
 GtkWidget *
@@ -240,14 +244,16 @@ parasite_style_get_css_content (ParasiteStyleList *self,
 }
 
 static void
-parasite_style_list_fill (ParasiteStyleList *self,
-                          GtkWidget         *widget)
+parasite_style_list_fill (ParasiteStyleList *self)
 {
   ParasiteStyleListPrivate *priv = self->priv;
   GtkStyleContext *context;
   guint i;
 
-  context = gtk_widget_get_style_context (widget);
+  if (!priv->widget)
+    return;
+
+  context = gtk_widget_get_style_context (priv->widget);
 
   gtk_list_store_clear (priv->model);
 
@@ -329,7 +335,7 @@ static void
 widget_style_updated (GtkWidget         *widget,
                       ParasiteStyleList *self)
 {
-  parasite_style_list_fill (self, widget);
+  parasite_style_list_fill (self);
 }
 
 static void
@@ -337,7 +343,7 @@ widget_state_flags_changed (GtkWidget         *widget,
                             GtkStateFlags      flags,
                             ParasiteStyleList *self)
 {
-  parasite_style_list_fill (self, widget);
+  parasite_style_list_fill (self);
 }
 
 static void
@@ -352,10 +358,19 @@ void
 parasite_style_list_set_widget (ParasiteStyleList *self,
                                 GtkWidget         *widget)
 {
+  ParasiteStyleListPrivate *priv;
+
   g_return_if_fail (PARASITE_IS_STYLE_LIST (self));
   g_return_if_fail (GTK_IS_WIDGET (widget));
 
-  parasite_style_list_fill (self, widget);
+  priv = self->priv;
+
+  if (priv->widget)
+    disconnect_each_other (priv->widget, G_OBJECT (self));
+
+  priv->widget = widget;
+
+  parasite_style_list_fill (self);
 
   g_signal_connect (widget, "style-updated",
                     G_CALLBACK (widget_style_updated), self);
