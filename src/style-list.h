@@ -48,6 +48,8 @@ GType           parasite_style_list_get_type            (void);
 GtkWidget *     parasite_style_list_new                 (void);
 void            parasite_style_list_set_widget          (ParasiteStyleList *stylelist,
                                                          GtkWidget         *widget);
+void            parasite_style_list_set_classes         (ParasiteStyleList *self,
+                                                         const gchar       *classes);
 
 G_END_DECLS
 

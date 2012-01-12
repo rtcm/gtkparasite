@@ -53,6 +53,8 @@ typedef struct
     int flash_count;
     int flash_cnx;
 
+    GtkWidget *style_classes_entry;
+    guint style_classes_entry_ratelimit_id;
 } ParasiteWindow;
 
 

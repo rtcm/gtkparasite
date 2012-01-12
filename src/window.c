@@ -69,11 +69,52 @@ create_widget_list_pane(ParasiteWindow *parasite)
     return swin;
 }
 
+static gboolean
+style_classes_entry_ratelimiter (gpointer data)
+{
+  ParasiteWindow *parasite = data;
+
+  parasite_style_list_set_classes (PARASITE_STYLE_LIST (parasite->style_list),
+                                   gtk_entry_get_text (GTK_ENTRY (parasite->style_classes_entry)));
+
+  parasite->style_classes_entry_ratelimit_id = 0;
+
+  return G_SOURCE_REMOVE;
+}
+
+static void
+style_classes_entry_changed (GtkEditable *editable,
+                             gpointer     data)
+{
+  ParasiteWindow *parasite = data;
+
+  if (parasite->style_classes_entry_ratelimit_id)
+    g_source_remove (parasite->style_classes_entry_ratelimit_id);
+
+  parasite->style_classes_entry_ratelimit_id = g_timeout_add_seconds (1,
+                                                                      style_classes_entry_ratelimiter,
+                                                                      data);
+}
+
+static void
+style_classes_entry_activate (GtkEntry *entry,
+                              gpointer  data)
+{
+  ParasiteWindow *parasite = data;
+
+  if (parasite->style_classes_entry_ratelimit_id)
+    g_source_remove (parasite->style_classes_entry_ratelimit_id);
+
+  style_classes_entry_ratelimiter (data);
+}
+
 static GtkWidget *
 create_prop_list_pane(ParasiteWindow *parasite)
 {
     GtkWidget *notebook;
     GtkWidget *swin;
+    GtkWidget *entry;
+    GtkWidget *box;
 
     notebook = gtk_notebook_new ();
 
@@ -87,6 +128,20 @@ create_prop_list_pane(ParasiteWindow *parasite)
     gtk_container_add(GTK_CONTAINER(swin), parasite->prop_list);
     gtk_notebook_append_page (GTK_NOTEBOOK (notebook), swin, gtk_label_new ("Widget properties"));
 
+    box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+    gtk_widget_show (box);
+    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), box, gtk_label_new ("Style properties"));
+
+    parasite->style_classes_entry_ratelimit_id = 0;
+
+    parasite->style_classes_entry = entry = gtk_entry_new ();
+    gtk_widget_show (entry);
+    gtk_box_pack_start (GTK_BOX (box), entry, FALSE, FALSE, 0);
+    g_signal_connect (entry, "changed",
+                      G_CALLBACK (style_classes_entry_changed), parasite);
+    g_signal_connect (entry, "activate",
+                      G_CALLBACK (style_classes_entry_activate), parasite);
+
     swin = gtk_scrolled_window_new(NULL, NULL);
     gtk_widget_show (swin);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(swin),
@@ -95,7 +150,8 @@ create_prop_list_pane(ParasiteWindow *parasite)
     parasite->style_list = parasite_style_list_new ();
     gtk_widget_show (parasite->style_list);
     gtk_container_add (GTK_CONTAINER (swin), parasite->style_list);
-    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), swin, gtk_label_new ("Style properties"));
+
+    gtk_box_pack_end (GTK_BOX (box), swin, TRUE, TRUE, 0);
 
     return notebook;
 }

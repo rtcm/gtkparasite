@@ -36,6 +36,7 @@ struct _ParasiteStyleListPrivate
   GHashTable *css_files;
   GtkListStore *model;
   GtkWidget *widget;
+  gchar **style_classes;
 };
 
 const char *known_properties[] = {
@@ -106,6 +107,7 @@ parasite_style_list_finalize (GObject *self)
   g_hash_table_destroy (priv->css_files);
   g_object_unref (priv->model);
   /* priv->widget, if any, is unrefed on the weak ref callback */
+  g_strfreev (priv->style_classes);
 
   G_OBJECT_CLASS (parasite_style_list_parent_class)->finalize (self);
 }
@@ -166,6 +168,7 @@ parasite_style_list_init (ParasiteStyleList *self)
                                                NULL);
 
   priv->widget = NULL;
+  priv->style_classes = NULL;
 }
 
 GtkWidget *
@@ -253,9 +256,20 @@ parasite_style_list_fill (ParasiteStyleList *self)
   if (!priv->widget)
     return;
 
+  gtk_list_store_clear (priv->model);
+
   context = gtk_widget_get_style_context (priv->widget);
 
-  gtk_list_store_clear (priv->model);
+  if (priv->style_classes)
+    {
+      guint i, n;
+
+      gtk_style_context_save (context);
+
+      n = g_strv_length (priv->style_classes);
+      for (i = 0; i < n; ++i)
+        gtk_style_context_add_class (context, priv->style_classes[i]);
+    }
 
   for (i = 0; i < G_N_ELEMENTS (known_properties); i++)
     {
@@ -328,6 +342,9 @@ parasite_style_list_fill (ParasiteStyleList *self)
       g_free (value);
     }
 
+  if (priv->style_classes)
+    gtk_style_context_restore (context);
+
   gtk_tree_view_columns_autosize (GTK_TREE_VIEW (self));
 }
 
@@ -378,4 +395,21 @@ parasite_style_list_set_widget (ParasiteStyleList *self,
                     G_CALLBACK (widget_state_flags_changed), self);
   g_object_weak_ref (G_OBJECT (self), disconnect_each_other, widget);
   g_object_weak_ref (G_OBJECT (widget), disconnect_each_other, self);
+}
+
+void
+parasite_style_list_set_classes (ParasiteStyleList *self,
+                                 const gchar       *classes)
+{
+  ParasiteStyleListPrivate *priv;
+
+  g_return_if_fail (PARASITE_IS_STYLE_LIST (self));
+
+  priv = self->priv;
+
+  g_strfreev (priv->style_classes);
+
+  priv->style_classes = g_strsplit_set (classes, " ,;.\t", -1);
+
+  parasite_style_list_fill (self);
 }
