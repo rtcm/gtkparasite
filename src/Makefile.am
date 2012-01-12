@@ -10,6 +10,8 @@ libgtkparasite_la_SOURCES = \
 	prop-list.c \
 	property-cell-renderer.c \
 	property-cell-renderer.h \
+	style-list.h \
+	style-list.c \
 	widget-tree.h \
 	widget-tree.c \
 	window.c

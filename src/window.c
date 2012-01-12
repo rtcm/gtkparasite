@@ -23,6 +23,7 @@
 #include "action-list.h"
 #include "parasite.h"
 #include "prop-list.h"
+#include "style-list.h"
 #include "widget-tree.h"
 
 #include "config.h"
@@ -36,6 +37,8 @@ on_widget_tree_selection_changed(ParasiteWidgetTree *widget_tree,
     if (selected != NULL) {
         parasite_proplist_set_widget(PARASITE_PROPLIST(parasite->prop_list),
                                      selected);
+        parasite_style_list_set_widget (PARASITE_STYLE_LIST (parasite->style_list),
+                                        selected);
 
         /* Flash the widget. */
         gtkparasite_flash_widget(parasite, selected);
@@ -69,20 +72,32 @@ create_widget_list_pane(ParasiteWindow *parasite)
 static GtkWidget *
 create_prop_list_pane(ParasiteWindow *parasite)
 {
+    GtkWidget *notebook;
     GtkWidget *swin;
 
+    notebook = gtk_notebook_new ();
+
     swin = gtk_scrolled_window_new(NULL, NULL);
+    gtk_widget_show (swin);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(swin),
                                    GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
-    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(swin),
-                                        GTK_SHADOW_IN);
-    gtk_widget_set_size_request(swin, 250, -1);
 
     parasite->prop_list = parasite_proplist_new();
     gtk_widget_show(parasite->prop_list);
     gtk_container_add(GTK_CONTAINER(swin), parasite->prop_list);
+    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), swin, gtk_label_new ("Widget properties"));
 
-    return swin;
+    swin = gtk_scrolled_window_new(NULL, NULL);
+    gtk_widget_show (swin);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(swin),
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
+
+    parasite->style_list = parasite_style_list_new ();
+    gtk_widget_show (parasite->style_list);
+    gtk_container_add (GTK_CONTAINER (swin), parasite->style_list);
+    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), swin, gtk_label_new ("Style properties"));
+
+    return notebook;
 }
 
 static void
@@ -114,9 +129,13 @@ create_widget_tree(ParasiteWindow *parasite)
     GtkWidget *swin;
     GtkWidget *hpaned;
 
+    hpaned = gtk_hpaned_new();
+    gtk_widget_show(hpaned);
+    gtk_container_set_border_width(GTK_CONTAINER(hpaned), 12);
+
     vbox = gtk_vbox_new(FALSE, 6);
     gtk_widget_show(vbox);
-    gtk_container_set_border_width(GTK_CONTAINER(vbox), 12);
+    gtk_paned_pack1(GTK_PANED(hpaned), vbox, FALSE, FALSE);
 
     bbox = gtk_hbutton_box_new();
     gtk_widget_show(bbox);
@@ -142,19 +161,15 @@ create_widget_tree(ParasiteWindow *parasite)
     g_signal_connect(G_OBJECT(button), "toggled",
                      G_CALLBACK(on_show_graphic_updates_toggled), parasite);
 
-    hpaned = gtk_hpaned_new();
-    gtk_widget_show(hpaned);
-    gtk_box_pack_start(GTK_BOX(vbox), hpaned, TRUE, TRUE, 0);
-
     swin = create_widget_list_pane(parasite);
     gtk_widget_show(swin);
-    gtk_paned_pack1(GTK_PANED(hpaned), swin, TRUE, TRUE);
+    gtk_box_pack_start (GTK_BOX (vbox), swin, TRUE, TRUE, 0);
 
     swin = create_prop_list_pane(parasite);
     gtk_widget_show(swin);
-    gtk_paned_pack2(GTK_PANED(hpaned), swin, FALSE, TRUE);
+    gtk_paned_pack2(GTK_PANED(hpaned), swin, FALSE, FALSE);
 
-    return vbox;
+    return hpaned;
 }
 
 static GtkWidget *
