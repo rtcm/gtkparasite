@@ -129,6 +129,7 @@ parasite_style_list_init (ParasiteStyleList *self)
 {
   ParasiteStyleListPrivate *priv;
   GtkCellRenderer *renderer;
+  GtkTreeViewColumn *column;
 
   priv = self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
                                                    PARASITE_TYPE_STYLE_LIST,
@@ -147,25 +148,29 @@ parasite_style_list_init (ParasiteStyleList *self)
 
   renderer = gtk_cell_renderer_text_new ();
   g_object_set (renderer, "scale", TREE_TEXT_SCALE, NULL);
-  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (self),
-                                               -1,
-                                               "Property", renderer,
-                                               "text", COLUMN_NAME,
-                                               NULL);
+  column = gtk_tree_view_column_new_with_attributes ("Property", renderer,
+                                                     "text", COLUMN_NAME,
+                                                     NULL);
+  gtk_tree_view_column_set_resizable (column, TRUE);
+  gtk_tree_view_insert_column (GTK_TREE_VIEW (self), column, -1);
+
+  renderer = gtk_cell_renderer_text_new ();
+  g_object_set (renderer,
+                "scale", TREE_TEXT_SCALE,
+                "wrap-width", 150, NULL);
+  column = gtk_tree_view_column_new_with_attributes ("Value", renderer,
+                                                     "text", COLUMN_VALUE,
+                                                     NULL);
+  gtk_tree_view_column_set_resizable (column, TRUE);
+  gtk_tree_view_insert_column (GTK_TREE_VIEW (self), column, -1);
+
   renderer = gtk_cell_renderer_text_new ();
   g_object_set (renderer, "scale", TREE_TEXT_SCALE, NULL);
-  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (self),
-                                               -1,
-                                               "Value", renderer,
-                                               "text", COLUMN_VALUE,
-                                               NULL);
-  renderer = gtk_cell_renderer_text_new ();
-  g_object_set (renderer, "scale", TREE_TEXT_SCALE, NULL);
-  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (self),
-                                               -1,
-                                               "Location", renderer,
-                                               "text", COLUMN_LOCATION,
-                                               NULL);
+  column = gtk_tree_view_column_new_with_attributes ("Location", renderer,
+                                                     "text", COLUMN_LOCATION,
+                                                     NULL);
+  gtk_tree_view_column_set_resizable (column, TRUE);
+  gtk_tree_view_insert_column (GTK_TREE_VIEW (self), column, -1);
 
   priv->widget = NULL;
   priv->style_classes = NULL;
@@ -344,8 +349,6 @@ parasite_style_list_fill (ParasiteStyleList *self)
 
   if (priv->style_classes)
     gtk_style_context_restore (context);
-
-  gtk_tree_view_columns_autosize (GTK_TREE_VIEW (self));
 }
 
 static void
