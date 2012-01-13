@@ -28,17 +28,22 @@
 
 #include "config.h"
 
-
 static void
 on_widget_tree_selection_changed(ParasiteWidgetTree *widget_tree,
                                  ParasiteWindow *parasite)
 {
     GtkWidget *selected = parasite_widget_tree_get_selected_widget(widget_tree);
     if (selected != NULL) {
+        gchar *path;
+
         parasite_proplist_set_widget(PARASITE_PROPLIST(parasite->prop_list),
                                      selected);
         parasite_style_list_set_widget (PARASITE_STYLE_LIST (parasite->style_list),
                                         selected);
+
+        path = gtk_widget_path_to_string (gtk_widget_get_path (selected));
+        gtk_label_set_text (GTK_LABEL (parasite->widget_path_label), path);
+        g_free (path);
 
         /* Flash the widget. */
         gtkparasite_flash_widget(parasite, selected);
@@ -114,7 +119,8 @@ create_prop_list_pane(ParasiteWindow *parasite)
     GtkWidget *notebook;
     GtkWidget *swin;
     GtkWidget *entry;
-    GtkWidget *box;
+    GtkWidget *label;
+    GtkWidget *vbox, *hbox;
 
     notebook = gtk_notebook_new ();
 
@@ -128,19 +134,40 @@ create_prop_list_pane(ParasiteWindow *parasite)
     gtk_container_add(GTK_CONTAINER(swin), parasite->prop_list);
     gtk_notebook_append_page (GTK_NOTEBOOK (notebook), swin, gtk_label_new ("Widget properties"));
 
-    box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
-    gtk_widget_show (box);
-    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), box, gtk_label_new ("Style properties"));
+    vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_show (vbox);
+    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), vbox, gtk_label_new ("Style properties"));
+
+    hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_widget_show (hbox);
+    gtk_container_set_border_width (GTK_CONTAINER (hbox), 6);
+    gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
+
+    label = gtk_label_new ("Extra classes:");
+    gtk_widget_show (label);
+    gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
 
     parasite->style_classes_entry_ratelimit_id = 0;
 
     parasite->style_classes_entry = entry = gtk_entry_new ();
     gtk_widget_show (entry);
-    gtk_box_pack_start (GTK_BOX (box), entry, FALSE, FALSE, 0);
+    gtk_box_pack_start (GTK_BOX (hbox), entry, FALSE, FALSE, 0);
+    gtk_widget_set_halign (entry, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign (entry, GTK_ALIGN_CENTER);
     g_signal_connect (entry, "changed",
                       G_CALLBACK (style_classes_entry_changed), parasite);
     g_signal_connect (entry, "activate",
                       G_CALLBACK (style_classes_entry_activate), parasite);
+
+    label = gtk_label_new ("Widget path:");
+    gtk_widget_show (label);
+    gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+
+    parasite->widget_path_label = label = gtk_label_new (NULL);
+    gtk_widget_show (label);
+    gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+    gtk_label_set_selectable (GTK_LABEL (label), TRUE);
+    gtk_label_set_line_wrap (GTK_LABEL (label), TRUE);
 
     swin = gtk_scrolled_window_new(NULL, NULL);
     gtk_widget_show (swin);
@@ -151,7 +178,7 @@ create_prop_list_pane(ParasiteWindow *parasite)
     gtk_widget_show (parasite->style_list);
     gtk_container_add (GTK_CONTAINER (swin), parasite->style_list);
 
-    gtk_box_pack_end (GTK_BOX (box), swin, TRUE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (vbox), swin, TRUE, TRUE, 0);
 
     return notebook;
 }
