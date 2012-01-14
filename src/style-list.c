@@ -21,6 +21,8 @@
  * THE SOFTWARE.
  */
 
+#include <string.h>
+
 #include "parasite.h"
 #include "style-list.h"
 
@@ -36,7 +38,8 @@ struct _ParasiteStyleListPrivate
   GHashTable *css_files;
   GtkListStore *model;
   GtkWidget *widget;
-  gchar **style_classes;
+  GSList *style_classes;
+  GSList *pseudo_classes;
 };
 
 const char *known_properties[] = {
@@ -107,7 +110,8 @@ parasite_style_list_finalize (GObject *self)
   g_hash_table_destroy (priv->css_files);
   g_object_unref (priv->model);
   /* priv->widget, if any, is unrefed on the weak ref callback */
-  g_strfreev (priv->style_classes);
+  g_slist_free_full (priv->style_classes, g_free);
+  g_slist_free_full (priv->pseudo_classes, g_free);
 
   G_OBJECT_CLASS (parasite_style_list_parent_class)->finalize (self);
 }
@@ -174,12 +178,45 @@ parasite_style_list_init (ParasiteStyleList *self)
 
   priv->widget = NULL;
   priv->style_classes = NULL;
+  priv->pseudo_classes = NULL;
 }
 
 GtkWidget *
 parasite_style_list_new (void)
 {
   return g_object_new (PARASITE_TYPE_STYLE_LIST, NULL);
+}
+
+static GtkStateFlags
+calc_state_flags (GSList *states)
+{
+  GtkStateFlags flags;
+  const gchar *s;
+
+  flags = 0;
+  while (states)
+    {
+      s = (gchar *) states->data;
+
+      if (!strcmp (s, "active"))
+        flags |= GTK_STATE_FLAG_ACTIVE;
+      else if (!strcmp (s, "prelight"))
+        flags |= GTK_STATE_FLAG_PRELIGHT;
+      else if (!strcmp (s, "selected"))
+        flags |= GTK_STATE_FLAG_SELECTED;
+      else if (!strcmp (s, "insensitive"))
+        flags |= GTK_STATE_FLAG_INSENSITIVE;
+      else if (!strcmp (s, "inconsistent"))
+        flags |= GTK_STATE_FLAG_INCONSISTENT;
+      else if (!strcmp (s, "focused"))
+        flags |= GTK_STATE_FLAG_FOCUSED;
+      else if (!strcmp (s, "backdrop"))
+        flags |= GTK_STATE_FLAG_BACKDROP;
+
+      states = states->next;
+    }
+
+  return flags;
 }
 
 static gchar *
@@ -256,6 +293,7 @@ parasite_style_list_fill (ParasiteStyleList *self)
 {
   ParasiteStyleListPrivate *priv = self->priv;
   GtkStyleContext *context;
+  GSList *l;
   guint i;
 
   if (!priv->widget)
@@ -264,17 +302,13 @@ parasite_style_list_fill (ParasiteStyleList *self)
   gtk_list_store_clear (priv->model);
 
   context = gtk_widget_get_style_context (priv->widget);
+  gtk_style_context_save (context);
 
-  if (priv->style_classes)
-    {
-      guint i, n;
+  for (l = priv->style_classes; l != NULL; l = l->next)
+    gtk_style_context_add_class (context, (gchar *) l->data);
 
-      gtk_style_context_save (context);
-
-      n = g_strv_length (priv->style_classes);
-      for (i = 0; i < n; ++i)
-        gtk_style_context_add_class (context, priv->style_classes[i]);
-    }
+  if (priv->pseudo_classes)
+    gtk_style_context_set_state (context, calc_state_flags (priv->pseudo_classes));
 
   for (i = 0; i < G_N_ELEMENTS (known_properties); i++)
     {
@@ -347,8 +381,7 @@ parasite_style_list_fill (ParasiteStyleList *self)
       g_free (value);
     }
 
-  if (priv->style_classes)
-    gtk_style_context_restore (context);
+  gtk_style_context_restore (context);
 }
 
 static void
@@ -402,17 +435,59 @@ parasite_style_list_set_widget (ParasiteStyleList *self,
 
 void
 parasite_style_list_set_classes (ParasiteStyleList *self,
-                                 const gchar       *classes)
+                                 const gchar       *string)
 {
   ParasiteStyleListPrivate *priv;
+  GSList *styles, *states;
+  const gchar *a;
+  const gchar *b;
+  gchar *word;
 
   g_return_if_fail (PARASITE_IS_STYLE_LIST (self));
+  g_return_if_fail (string != NULL);
 
   priv = self->priv;
 
-  g_strfreev (priv->style_classes);
+  styles = states = NULL;
 
-  priv->style_classes = g_strsplit_set (classes, " ,;.\t", -1);
+  a = b = string;
+  while (*b != '\0')
+    {
+      if (*a == '.' || *a == ':')
+        if (!g_ascii_isalpha (*b) && *b != '-' && g_ascii_isalpha (*(a + 1)))
+          {
+            word = g_strndup (a + 1, b - a - 1);
+
+            if (*a == '.')
+              styles = g_slist_prepend (styles, word);
+            else
+              states = g_slist_prepend (states, word);
+
+            a = b;
+          }
+
+      if (*b == '.' || *b == ':')
+        a = b;
+
+      ++b;
+    }
+
+  if (*a == '.' || *a == ':')
+    if (g_ascii_isalpha (*(a + 1)))
+      {
+        word = g_strndup (a + 1, b - a - 1);
+
+        if (*a == '.')
+          styles = g_slist_prepend (styles, word);
+        else
+          states = g_slist_prepend (states, word);
+      }
+
+  g_slist_free_full (priv->style_classes, g_free);
+  priv->style_classes = styles;
+
+  g_slist_free_full (priv->pseudo_classes, g_free);
+  priv->pseudo_classes = states;
 
   parasite_style_list_fill (self);
 }
