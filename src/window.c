@@ -42,7 +42,8 @@ on_widget_tree_selection_changed(ParasiteWidgetTree *widget_tree,
                                         selected);
 
         path = gtk_widget_path_to_string (gtk_widget_get_path (selected));
-        gtk_label_set_text (GTK_LABEL (parasite->widget_path_label), path);
+        gtk_entry_set_text (GTK_ENTRY (parasite->widget_path_entry), path);
+        gtk_editable_set_position (GTK_EDITABLE (parasite->widget_path_entry), -1);
         g_free (path);
 
         /* Flash the widget. */
@@ -163,11 +164,10 @@ create_prop_list_pane(ParasiteWindow *parasite)
     gtk_widget_show (label);
     gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
 
-    parasite->widget_path_label = label = gtk_label_new (NULL);
-    gtk_widget_show (label);
-    gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
-    gtk_label_set_selectable (GTK_LABEL (label), TRUE);
-    gtk_label_set_line_wrap (GTK_LABEL (label), TRUE);
+    parasite->widget_path_entry = entry = gtk_entry_new ();
+    gtk_widget_show (entry);
+    gtk_box_pack_start (GTK_BOX (hbox), entry, TRUE, TRUE, 0);
+    gtk_editable_set_editable (GTK_EDITABLE (entry), FALSE);
 
     swin = gtk_scrolled_window_new(NULL, NULL);
     gtk_widget_show (swin);
