@@ -454,7 +454,7 @@ parasite_style_list_set_classes (ParasiteStyleList *self,
   while (*b != '\0')
     {
       if (*a == '.' || *a == ':')
-        if (!g_ascii_isalpha (*b) && *b != '-' && g_ascii_isalpha (*(a + 1)))
+        if (!g_ascii_isalpha (*b) && *b != '-' && b != a && g_ascii_isalpha (*(a + 1)))
           {
             word = g_strndup (a + 1, b - a - 1);
 
@@ -473,7 +473,7 @@ parasite_style_list_set_classes (ParasiteStyleList *self,
     }
 
   if (*a == '.' || *a == ':')
-    if (g_ascii_isalpha (*(a + 1)))
+    if (b != a && g_ascii_isalpha (*(a + 1)))
       {
         word = g_strndup (a + 1, b - a - 1);
 
