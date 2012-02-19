@@ -393,12 +393,19 @@ append_widget(GtkTreeStore *model,
     window = gtk_widget_get_window (widget);
     if (window)
     {
+        if (gdk_window_has_native (window))
+        {
 #if HAVE_X11
-	window_info = g_strdup_printf("%p (XID 0x%x)", window,
-	                              (int)GDK_WINDOW_XID(window));
+            window_info = g_strdup_printf("%p (XID 0x%x)", window,
+                                          (int)GDK_WINDOW_XID(window));
 #else
-	window_info = g_strdup("");
+            window_info = g_strdup("");
 #endif
+        }
+        else
+        {
+            window_info = g_strdup("non-native");
+        }
     }
     else
     {
