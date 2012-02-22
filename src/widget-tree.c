@@ -395,12 +395,28 @@ append_widget(GtkTreeStore *model,
     {
         if (gdk_window_has_native (window))
         {
+            switch (gdk_window_get_window_type (window))
+            {
+            case GDK_WINDOW_ROOT:
+            case GDK_WINDOW_TOPLEVEL:
+            case GDK_WINDOW_CHILD:
+            case GDK_WINDOW_TEMP:
+            case GDK_WINDOW_FOREIGN:
 #if HAVE_X11
-            window_info = g_strdup_printf("%p (XID 0x%x)", window,
-                                          (int)GDK_WINDOW_XID(window));
-#else
-            window_info = g_strdup("");
+                if (GDK_IS_X11_DISPLAY (gdk_window_get_display (window)))
+                    window_info = g_strdup_printf("%p (XID 0x%x)", window,
+                                                  (int)GDK_WINDOW_XID(window));
+                else
 #endif
+                    window_info = g_strdup("");
+
+                break;
+            case GDK_WINDOW_OFFSCREEN:
+                window_info = g_strdup ("offscreen");
+                break;
+            default:
+                g_assert_not_reached ();
+            }
         }
         else
         {
