@@ -30,7 +30,8 @@ VERSION=0.1.0
 PACKAGE=gtkparasite
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
-
+# Support silencing the build output if supported (automake-1.11+)
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 dnl ################################################################
 dnl # Specify a header configuration file
