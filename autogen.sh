@@ -5,6 +5,8 @@ DIE=0
 
 PACKAGE=gtkparasite
 
+cat ./README && exit 1;
+
 echo "Generating configuration files for $PACKAGE, please wait..."
 
 (autoconf --version) < /dev/null > /dev/null 2>&1 || {
